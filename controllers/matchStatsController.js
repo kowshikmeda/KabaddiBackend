@@ -2,6 +2,8 @@ const MatchStats = require('../models/MatchStats');
 const Match = require('../models/Match');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
+const { emitMatchUpdated, emitNewCommentary } = require('../services/matchRealtimeService');
+const Commentary = require('../models/Commentary');
 
 // @desc    Get scorecard summary
 // @route   GET /api/scorecard/:matchId
@@ -316,6 +318,90 @@ const updateMatchStats = async (req, res) => {
       .populate('matchId')
       .populate('team1.playerId', 'name')
       .populate('team2.playerId', 'name');
+     // Emit realtime score update
+  
+    const updatedMatch = await Match.findById(matchId).lean();
+
+    const matchUpdatedPayload = {
+      id: updatedMatch._id,
+      matchName: `${updatedMatch.team1Name} vs ${updatedMatch.team2Name}`,
+      team1: {
+        name: updatedMatch.team1Name,
+        photo: updatedMatch.team1Photo || `https://ui-avatars.com/api/?name=${updatedMatch.team1Name.split(' ').join('+')}&background=random`,
+        score: updatedMatch.team1Score
+      },
+      team2: {
+        name: updatedMatch.team2Name,
+        photo: updatedMatch.team2Photo || `https://ui-avatars.com/api/?name=${updatedMatch.team2Name.split(' ').join('+')}&background=random`,
+        score: updatedMatch.team2Score
+      },
+      status: updatedMatch.status.toUpperCase(),
+      remainingDuration: updatedMatch.remainingDuration,
+      venue: updatedMatch.venue,
+      date: updatedMatch.matchDate,
+      players: {
+        team1: populatedStats.team1.map(p => ({
+          id: p.playerId._id,
+          name: p.playerId.name,
+          raidPoints: p.raidPoints,
+          tacklePoints: p.tacklePoints
+        })),
+        team2: populatedStats.team2.map(p => ({
+          id: p.playerId._id,
+          name: p.playerId.name,
+          raidPoints: p.raidPoints,
+          tacklePoints: p.tacklePoints
+        }))
+      }
+    };
+    // Store live commentary line
+    if(points>0){
+      let commentaryLine = '';
+let playername=await User.findById(playerToUpdate.playerId).select('name');
+
+switch (pointType) {
+  case 'RAID_POINT':
+    commentaryLine = `${teamName} scored raid points by player ${playername.name} ${points} points.`;
+    break;
+
+  case 'TACKLE_POINT':
+    commentaryLine = `${teamName} scored tackle points by player ${playername.name} ${points} points.`;
+    break;
+
+  case 'BONUS_POINT':
+    commentaryLine = `${teamName} scored a bonus point. +${points} points.`;
+    break;
+
+  case 'TECHNICAL_POINT':
+    commentaryLine = `${teamName} awarded a technical point. +${points} points.`;
+    break;
+
+  case 'ALL_OUT_POINT':
+    commentaryLine = `${teamName} scored an all-out point! +${points} points.`;
+    break;
+
+  default:
+    commentaryLine = `Point scored.`;
+}
+
+await Commentary.create({
+  matchId,
+  commentary: commentaryLine,
+  createdAt: new Date(),
+});
+    
+const newCommentaryPayload = {
+  matchId,
+  commentary: commentaryLine,
+  createdAt: new Date(),
+};
+
+emitNewCommentary(newCommentaryPayload);
+    }
+
+   
+    // ⚡ Emit a single event
+    emitMatchUpdated(matchUpdatedPayload);
 
     res.status(200).json({
       success: true,

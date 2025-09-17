@@ -4,7 +4,8 @@ const { authMiddleware } = require('../middleware/auth');
 const {
   getAllMatches,
   createMatch,
-  updateMatchStatus
+  updateMatchStatus,
+  getCommentary
 } = require('../controllers/matchController');
 const upload = require('../config/cloudinary');
 
@@ -52,5 +53,5 @@ router.post('/create', authMiddleware,  upload.fields([
     { name: 'team2Photo', maxCount: 1 }
   ]), createMatchValidation, createMatch);
 router.put('/match/:actionType/:matchId/:currentUserId', authMiddleware, updateMatchStatus);
-
+router.get('/match/:matchId/commentary',getCommentary);
 module.exports = router;

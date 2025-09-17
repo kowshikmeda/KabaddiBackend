@@ -1,7 +1,8 @@
 const Match = require('../models/Match');
 const MatchStats = require('../models/MatchStats');
 const { validationResult } = require('express-validator');
-
+const {  emitMatchUpdated } = require('../services/matchRealtimeService');
+const Commentary = require('../models/Commentary');
 // @desc    Get all matches
 // @route   GET /api/matches/all
 // @access  Public
@@ -163,7 +164,7 @@ const createMatch = async (req, res) => {
   }
 };
 
-module.exports = { createMatch }; // Example of how to export
+
 // @desc    Update match status
 // @route   PUT /api/matches/match/:actionType/:matchId/:currentUserID
 // @access  Private
@@ -278,7 +279,47 @@ const updateMatchStatus = async (req, res) => {
       { $set: updateData }, // Use $set for safer updates
       { new: true, runValidators: true }
     );
+    const populatedStats = await MatchStats.findOne({ matchId })
+  .populate('team1.playerId', 'name')
+  .populate('team2.playerId', 'name')
+  .lean();
 
+
+    const matchUpdatedPayload = {
+      id: updatedMatch._id,
+      matchName: `${updatedMatch.team1Name} vs ${updatedMatch.team2Name}`,
+      team1: {
+        name: updatedMatch.team1Name,
+        photo: updatedMatch.team1Photo || `https://ui-avatars.com/api/?name=${updatedMatch.team1Name.split(' ').join('+')}&background=random`,
+        score: updatedMatch.team1Score
+      },
+      team2: {
+        name: updatedMatch.team2Name,
+        photo: updatedMatch.team2Photo || `https://ui-avatars.com/api/?name=${updatedMatch.team2Name.split(' ').join('+')}&background=random`,
+        score: updatedMatch.team2Score
+      },
+      status: updatedMatch.status.toUpperCase(),
+      remainingDuration: updatedMatch.remainingDuration,
+      venue: updatedMatch.venue,
+      date: updatedMatch.matchDate,
+      players: {
+        team1: populatedStats.team1.map(p => ({
+          id: p.playerId._id,
+          name: p.playerId.name,
+          raidPoints: p.raidPoints,
+          tacklePoints: p.tacklePoints
+        })),
+        team2: populatedStats.team2.map(p => ({
+          id: p.playerId._id,
+          name: p.playerId.name,
+          raidPoints: p.raidPoints,
+          tacklePoints: p.tacklePoints
+        }))
+      }
+    };
+  console.log("update match payload",matchUpdatedPayload);
+    // ⚡ Single unified emit
+    emitMatchUpdated(matchUpdatedPayload);
     res.status(200).json({
       success: true,
       message: `Match status updated to ${updateData.status || match.status}`,
@@ -293,9 +334,31 @@ const updateMatchStatus = async (req, res) => {
   }
 };
 
+const getCommentary=async(req,res)=>{
+  try {
+    const { matchId } = req.params;
+
+    // Fetch all commentaries for the match, sorted by createdAt descending (recent first)
+    const commentaries = await Commentary.find({ matchId })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: commentaries
+    });
+  } catch (error) {
+    console.error('Error fetching commentary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch commentary',
+      error: error.message
+    });
+  }
+} 
 
 module.exports = {
   getAllMatches,
   createMatch,
-  updateMatchStatus 
+  updateMatchStatus ,
+  getCommentary
 };

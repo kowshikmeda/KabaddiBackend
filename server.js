@@ -4,7 +4,7 @@ const http = require('http');
 const dotenv = require('dotenv');
 const app = require('./app');
 const connectDB = require('./config/database');
-const initializeSocket = require('./utils/socket'); // import socket.js
+const {initializeSocket} = require('./utils/socket'); // import socket.js
 
 dotenv.config();
 connectDB();
@@ -16,9 +16,6 @@ const server = http.createServer(app);
 
 // Initialize Socket.IO
 const io = initializeSocket(server);
-
-// Make io available in app (for controllers if needed)
-app.set('socketio', io);
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
