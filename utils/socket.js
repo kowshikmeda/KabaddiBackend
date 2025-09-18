@@ -4,7 +4,7 @@ const { setSocketInstance } = require('../services/matchRealtimeService');
 function initializeSocket(server) {
   const io = new Server(server, {
     cors: { origin: [  "https://kabaddi-fd.vercel.app" , "http://localhost:5173"], 
-      methods: ['GET', 'POST'], 
+      methods: ['GET', 'POST', 'PUT', 'DELETE'], 
       credentials: true },
        transports: ['websocket', 'polling'], // Allow both transports
   });

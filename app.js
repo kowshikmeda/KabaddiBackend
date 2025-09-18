@@ -17,6 +17,7 @@ const app = express();
 // Middleware
 app.use(cors({
   origin:  [  "https://kabaddi-fd.vercel.app" , "http://localhost:5173"],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
 app.use(express.json());
