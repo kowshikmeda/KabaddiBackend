@@ -317,7 +317,7 @@ const updateMatchStatus = async (req, res) => {
         }))
       }
     };
-  console.log("update match payload",matchUpdatedPayload);
+
     // ⚡ Single unified emit
     emitMatchUpdated(matchUpdatedPayload);
     res.status(200).json({

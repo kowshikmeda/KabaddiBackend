@@ -13,10 +13,10 @@ const matchRoutes = require('./routes/matchRoutes');
 const matchStatsRoutes = require('./routes/matchStatsRoutes');
 const scorecardRoutes = require('./routes/scorecardRoutes');
 const app = express();
-console.log('Client URL:', process.env.CLIENT_URL);
+
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: '*',
   credentials: true
 }));
 app.use(express.json());
